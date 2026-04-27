@@ -9,7 +9,28 @@
 # Prints PASS or FAIL and the system info that matters for triage (chip, OS).
 set -u
 
-PY="${PY:-3.12}"
+if [ -n "${PY:-}" ]; then
+    PY_BIN="python$PY"
+else
+    # Default: whatever python3 resolves to. Fall back to common minor
+    # versions if `python3` itself doesn't exist.
+    for cand in python3 python3.12 python3.13 python3.11 python3.10 python3.14; do
+        if command -v "$cand" >/dev/null 2>&1; then
+            PY_BIN="$cand"; break
+        fi
+    done
+fi
+if ! command -v "${PY_BIN:-}" >/dev/null 2>&1; then
+    echo "FAIL: no python3 found on PATH"; exit 1
+fi
+PY=$("$PY_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+case "$PY" in
+    3.10|3.11|3.12|3.13|3.14) ;;
+    *)
+        echo "FAIL: mps-flash-attn ships wheels for Python 3.10-3.14, not $PY."
+        echo "      Install one of those (e.g. brew install python@3.12) and retry."
+        exit 1 ;;
+esac
 TORCH="${TORCH:-2.11}"
 VENV="${VENV:-/tmp/mfa-smoke-py${PY}-pt${TORCH}}"
 
@@ -23,8 +44,8 @@ echo "=== Setup ($VENV) ==="
 # of the installed package.
 cd /tmp
 rm -rf "$VENV"
-if ! python$PY -m venv "$VENV" 2>/dev/null; then
-    echo "FAIL: python$PY not installed"; exit 1
+if ! "$PY_BIN" -m venv "$VENV" 2>/dev/null; then
+    echo "FAIL: $PY_BIN -m venv failed"; exit 1
 fi
 "$VENV/bin/pip" install --quiet --upgrade pip
 echo "Installing torch==$TORCH.* and mps-flash-attn..."
