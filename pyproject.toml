@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mps-flash-attn"
-version = "0.5.2"
+version = "0.6.0"
 description = "Flash Attention for PyTorch on Apple Silicon (M1/M2/M3/M4)"
 readme = "README.md"
 license = "MIT"
@@ -25,7 +25,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "torch>=2.0.0",
+    "torch>=2.5,<2.12",
 ]
 
 [project.urls]
@@ -43,6 +43,8 @@ mps_flash_attn = [
     "kernels/*.metallib",
     "kernels/*.bin",
     "kernels/*.json",
+    "_C_legacy*.so",
+    "_C_modern*.so",
 ]
 
 [tool.pytest.ini_options]

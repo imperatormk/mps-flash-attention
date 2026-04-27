@@ -32,8 +32,6 @@ class ObjCppBuildExt(build_ext):
 
         for ext in self.extensions:
             ext.include_dirs.extend(cpp_extension.include_paths())
-            ext.library_dirs.extend(cpp_extension.library_paths())
-            ext.libraries.extend(['c10', 'torch', 'torch_cpu', 'torch_python'])
 
         super().build_extensions()
 
@@ -62,17 +60,33 @@ def get_extensions():
     if sys.platform != "darwin":
         return []
 
+    # When packaging a final wheel we use prebuilt .so files dropped in-tree
+    # by scripts/build_dual_wheel.sh, so skip ext_modules entirely.
+    if os.environ.get("MFA_SKIP_EXT") == "1":
+        return []
+
+    # We build the same source twice with different names so a single wheel
+    # can support torch ABIs on either side of the 2.10 vtable break.
+    # Name is set via MFA_EXT_NAME env var (defaults to _C_legacy).
+    ext_name = os.environ.get("MFA_EXT_NAME", "_C_legacy")
     return [Extension(
-        name="mps_flash_attn._C",
+        name=f"mps_flash_attn.{ext_name}",
         sources=["mps_flash_attn/csrc/mps_flash_attn.mm"],
-        extra_compile_args=["-std=c++17", "-O3", "-DTORCH_EXTENSION_NAME=_C"],
-        extra_link_args=["-framework", "Metal", "-framework", "Foundation"],
+        extra_compile_args=[
+            "-std=c++17", "-O3",
+            f"-DTORCH_EXTENSION_NAME={ext_name}",
+        ],
+        extra_link_args=[
+            "-framework", "Metal",
+            "-framework", "Foundation",
+            "-Wl,-undefined,dynamic_lookup",
+        ],
     )]
 
 
 setup(
     name="mps-flash-attn",
-    version="0.5.1",
+    version="0.6.0",
     packages=find_packages(),
     package_data={
         "mps_flash_attn": [
@@ -80,10 +94,12 @@ setup(
             "kernels/*.metallib",
             "kernels/*.bin",
             "kernels/*.json",
+            "_C_legacy*.so",
+            "_C_modern*.so",
         ],
     },
     include_package_data=True,
-    install_requires=["torch>=2.0"],
+    install_requires=["torch>=2.5,<2.12"],
     ext_modules=get_extensions(),
     cmdclass={"build_ext": ObjCppBuildExt},
 )

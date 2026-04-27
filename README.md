@@ -1,12 +1,12 @@
 # MPS Flash Attention
 
-Flash Attention for PyTorch on Apple Silicon (M1/M2/M3/M4).
+Flash Attention for PyTorch on Apple Silicon (M1/M2/M3/M4/M5).
 
 **O(N) memory** instead of O(N²), enabling 100K+ sequence lengths on unified memory.
 
 ## Performance
 
-Benchmarked on Apple Silicon (M1/M2/M3/M4):
+Benchmarked on Apple Silicon (M1/M2/M3/M4/M5):
 
 | Seq Length | vs PyTorch SDPA | Notes |
 |------------|-----------------|-------|
@@ -32,12 +32,14 @@ cd mps-flash-attention
 # Build Swift bridge
 cd swift-bridge && swift build -c release && cd ..
 
-# Install
-pip install -e .
-
-# Set bridge path
-export MFA_BRIDGE_PATH=$PWD/swift-bridge/.build/release/libMFABridge.dylib
+# Install (uses the torch already in your environment)
+pip install -e . --no-build-isolation
 ```
+
+To build the full PyPI matrix (5 Python versions, dual torch ABIs), use
+`scripts/build_all_wheels.sh`. The wheels land in `dist/`. Run
+`bash tests/wheel_matrix/test_wheel_matrix.sh` to verify each wheel against
+the torch versions it claims to support.
 
 ## Usage
 
@@ -142,46 +144,56 @@ compare_vs_sdpa()
 
 ## Features
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Forward pass | ✅ | FP16/BF16/FP32 |
-| Backward pass | ✅ | Full gradient support |
-| Causal masking | ✅ | Native kernel support |
-| Attention masks | ✅ | Boolean masks |
-| Sliding window | ✅ | For local attention models |
-| GQA/MQA | ✅ | Grouped-query attention |
-| Quantized KV | ✅ | FP8, INT8, NF4 |
-| Chunked attention | ✅ | 100K+ tokens |
-| torch.compile() | ✅ | Custom op backend |
-| Dropout | ❌ | Not supported |
+| Feature | Supported | Notes |
+|---------|:---------:|-------|
+| Forward pass | yes | FP16/BF16/FP32 |
+| Backward pass | yes | Full gradient support |
+| Causal masking | yes | Native kernel support |
+| Attention masks | yes | Boolean masks |
+| Sliding window | yes | For local attention models |
+| GQA/MQA | yes | Grouped-query attention |
+| Quantized KV | yes | FP8, INT8, NF4 |
+| Chunked attention | yes | 100K+ tokens |
+| torch.compile() | yes | Custom op backend |
+| Dropout | no | Not supported |
 
 ## Architecture
 
 ```
 Python API (mps_flash_attn)
-         │
-    C++ Extension (mps_flash_attn.mm)
-         │ dlopen
+         |
+    C++ Extension (_C_legacy.so or _C_modern.so, picked at import)
+         | dlopen
     Swift Bridge (MFABridge.swift)
-         │
+         |
     Metal Flash Attention (kernel generation)
-         │
+         |
     Metal GPU Shaders
 ```
 
 ## Requirements
 
-- macOS 14+ (Sonoma) or macOS 15+ (Sequoia)
-- Apple Silicon (M1/M2/M3/M4)
-- Python 3.10+
-- PyTorch 2.0+
+- macOS 14+ (Sonoma, Sequoia, or Tahoe)
+- Apple Silicon (M1/M2/M3/M4/M5)
+- Python 3.10, 3.11, 3.12, 3.13, or 3.14
+- PyTorch 2.5 through 2.11
 
-## TODO / Future Optimizations
+### Tested torch + Python combinations
 
-- [ ] **Batched kernel dispatch** - Currently dispatches B×H separate kernels per attention call. Should use 3D grid to handle all batch/heads in one dispatch (major perf win for small sequences like Swin Transformer windows)
-- [ ] **Fused QKV projection + attention** - Single kernel from input to output, avoid intermediate buffers
-- [ ] **Pre-scaled bias option** - Allow passing pre-scaled bias to avoid per-call scaling overhead
-- [ ] **LoRA fusion** - Fuse adapter weights into attention computation
+|         | torch 2.5 | 2.6 | 2.7 | 2.8 | 2.9 | 2.10 | 2.11 |
+|---------|:---------:|:---:|:---:|:---:|:---:|:----:|:----:|
+| py 3.10 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
+| py 3.11 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
+| py 3.12 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
+| py 3.13 |           | OK  | OK  | OK  | OK  | OK   | OK   |
+| py 3.14 |           |     |     |     | OK  | OK   | OK   |
+
+Empty cells are combinations PyTorch itself does not ship wheels for.
+
+The `dependencies` field in the wheel pins `torch>=2.5,<2.12`, so `pip install
+mps-flash-attn` will refuse to install on a torch outside this range rather
+than installing and crashing at runtime. When a new torch minor is released we
+cut a release that bumps the upper bound.
 
 ## Credits
 

@@ -42,12 +42,25 @@ import threading
 import os
 import warnings
 
-# Try to import the C++ extension
+# Try to import the C++ extension. We ship two builds because torch's c10
+# vtable layout changed at 2.10 (decref_pyobject was added as a final virtual).
+# A single _C.so cannot work across the boundary, so we ship _C_legacy (built
+# against torch 2.5, ABI-compatible with 2.5-2.9) and _C_modern (built against
+# torch 2.10, ABI-compatible with 2.10+). We pick the right one based on the
+# user's installed torch version, then register it as `mps_flash_attn._C` so
+# all `from . import _C` references in submodules continue to work.
+import sys as _sys
+_HAS_MFA = False
+_IMPORT_ERROR = None
 try:
-    from . import _C
+    _torch_minor = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
+    if _torch_minor < (2, 10):
+        from . import _C_legacy as _C
+    else:
+        from . import _C_modern as _C
+    _sys.modules[__name__ + "._C"] = _C
     _HAS_MFA = True
 except ImportError as e:
-    _HAS_MFA = False
     _IMPORT_ERROR = str(e)
 
 # Decide which backend to use at import time (not on every call)
