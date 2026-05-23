@@ -14,8 +14,15 @@
 set -euo pipefail
 
 PY_BIN="${PY_BIN:-python3.12}"
-LEGACY_TORCH="${LEGACY_TORCH:-2.5.*}"
 MODERN_TORCH="${MODERN_TORCH:-2.10.*}"
+
+# Legacy torch (pre-2.10 ABI). torch 2.5 has no wheels for Python >= 3.13, so use
+# 2.6 there (still pre-2.10 = same legacy ABI). py3.14 has no pre-2.10 torch at all
+# -> caller passes LEGACY_TORCH=skip.
+if [ -z "${LEGACY_TORCH:-}" ]; then
+    _pyminor=$("$PY_BIN" -c 'import sys; print(sys.version_info.minor)')
+    if [ "$_pyminor" -ge 13 ]; then LEGACY_TORCH="2.6.*"; else LEGACY_TORCH="2.5.*"; fi
+fi
 
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)

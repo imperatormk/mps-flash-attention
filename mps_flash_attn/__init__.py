@@ -163,8 +163,16 @@ def _validate_and_expand_mask(
 
     attn_mask = _ensure_contiguous(attn_mask, "attn_mask")
 
+    # Match PyTorch SDPA broadcasting: accept 2D (N_q,N_kv) and 3D (B,N_q,N_kv)
+    # masks by promoting to 4D (B,H,N_q,N_kv). Without this, models that pass
+    # non-4D masks (e.g. multiview position masks) fall back off flash.
+    if attn_mask.dim() == 2:
+        attn_mask = attn_mask[None, None]
+    elif attn_mask.dim() == 3:
+        attn_mask = attn_mask[:, None]
+
     if attn_mask.dim() != 4:
-        raise ValueError(f"attn_mask must be 4D (B, H, N_q, N_kv), got {attn_mask.dim()}D")
+        raise ValueError(f"attn_mask must be 2D/3D/4D, got {attn_mask.dim()}D")
 
     mb, mh, mq, mk = attn_mask.shape
 
@@ -422,20 +430,22 @@ def replace_sdpa():
 
     original_sdpa = F.scaled_dot_product_attention
     _debug = os.environ.get("MFA_DEBUG", "0") == "1"
+    # Minimum query seq_len to route through MFA. MFA beats MPS SDPA at small seqs
+    # too, but very-short seqs are dispatch-bound either way; 32 is a good default
+    # that captures the small attention layers in SD UNets. Tune via MFA_MIN_SEQ.
+    _min_seq = int(os.environ.get("MFA_MIN_SEQ", "32"))
     _call_count = [0]  # mutable for closure
     _fallback_count = [0]  # track fallbacks for warning
     _last_fallback_error = [None]
 
     def patched_sdpa(query, key, value, attn_mask=None, dropout_p=0.0,
                      is_causal=False, scale=None, enable_gqa=False, **kwargs):
-        # Use MFA for MPS tensors without dropout
-        # Only use MFA for seq_len >= 512 where it outperforms PyTorch's math backend
-        # For shorter sequences, PyTorch's simpler matmul+softmax approach is faster
-        # Benchmark results (B=1-4, H=8, D=64-128, fp16/bf16):
-        #   seq=512:  1.2-1.6x (MFA faster)
-        #   seq=1024: 2.3-3.7x (MFA much faster)
-        #   seq=2048: 2.2-3.9x (MFA much faster)
-        #   seq=4096: 2.1-3.7x (MFA much faster)
+        # Use MFA for MPS tensors without dropout, query seq_len >= _min_seq (default
+        # 32, env MFA_MIN_SEQ). MFA beats MPS SDPA across all measured seq lengths;
+        # the gate just avoids trivially-short, dispatch-bound seqs. (Earlier a too-low
+        # gate appeared to OOM, but that was MFA being silently disabled — a missing
+        # _C_modern build + 3D masks rejected — so masked attention fell back to plain
+        # MPS SDPA which materialized a huge score matrix. Both are now fixed.)
         # Determine seq_len based on tensor dimensionality
         # 4D: (B, H, S, D) -> seq_len = shape[2]
         # 3D: (B, S, D) -> seq_len = shape[1] (single-head attention, e.g., VAE)
@@ -446,7 +456,7 @@ def replace_sdpa():
             dropout_p == 0.0 and
             _HAS_MFA and
             query.ndim >= 3 and
-            seq_len >= 512):
+            seq_len >= _min_seq):
             try:
                 q, k, v = query, key, value
 
