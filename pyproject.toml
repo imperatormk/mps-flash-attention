@@ -45,6 +45,7 @@ mps_flash_attn = [
     "kernels/*.json",
     "_C_legacy*.so",
     "_C_modern*.so",
+    "_C_next*.so",
 ]
 
 [tool.pytest.ini_options]
