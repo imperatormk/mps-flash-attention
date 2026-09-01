@@ -15,6 +15,8 @@ set -euo pipefail
 
 PY_BIN="${PY_BIN:-python3.12}"
 MODERN_TORCH="${MODERN_TORCH:-2.10.*}"
+# torch 2.13 broke the C++ ABI again; _C_next is built against it for 2.13+.
+NEXT_TORCH="${NEXT_TORCH:-2.13.*}"
 
 # Legacy torch (pre-2.10 ABI). torch 2.5 has no wheels for Python >= 3.13, so use
 # 2.6 there (still pre-2.10 = same legacy ABI). py3.14 has no pre-2.10 torch at all
@@ -31,6 +33,7 @@ PY_TAG=$($PY_BIN -c 'import sys; print(f"py{sys.version_info.major}{sys.version_
 WORK=/tmp/mfa-dualbuild-$PY_TAG
 LEGACY_VENV="$WORK/legacy"
 MODERN_VENV="$WORK/modern"
+NEXT_VENV="$WORK/next"
 
 # Clean per-Python state but keep dist/ to accumulate wheels.
 rm -rf "$WORK"
@@ -38,8 +41,10 @@ mkdir -p "$WORK"
 rm -rf build/ mps_flash_attn.egg-info
 rm -f mps_flash_attn/_C_legacy.cpython-*.so
 rm -f mps_flash_attn/_C_modern.cpython-*.so
+rm -f mps_flash_attn/_C_next.cpython-*.so
 rm -f mps_flash_attn/_C_legacy.so
 rm -f mps_flash_attn/_C_modern.so
+rm -f mps_flash_attn/_C_next.so
 
 # Build Swift bridge once (idempotent across python versions).
 if [ ! -f swift-bridge/.build/release/libMFABridge.dylib ]; then
@@ -75,6 +80,12 @@ fi
 echo "==> Setting up modern venv (torch $MODERN_TORCH)"
 mk_venv "$MODERN_VENV" "$MODERN_TORCH"
 build_one "$MODERN_VENV" "_C_modern"
+
+if [ "$NEXT_TORCH" != "skip" ]; then
+    echo "==> Setting up next venv (torch $NEXT_TORCH)"
+    mk_venv "$NEXT_VENV" "$NEXT_TORCH"
+    build_one "$NEXT_VENV" "_C_next"
+fi
 
 echo "==> Built .so files:"
 ls -la mps_flash_attn/_C_*.so

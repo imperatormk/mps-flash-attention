@@ -102,6 +102,7 @@ setup(
             "kernels/*.json",
             "_C_legacy*.so",
             "_C_modern*.so",
+            "_C_next*.so",
         ],
     },
     include_package_data=True,
