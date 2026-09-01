@@ -69,11 +69,17 @@ def get_extensions():
     # can support torch ABIs on either side of the 2.10 vtable break.
     # Name is set via MFA_EXT_NAME env var (defaults to _C_legacy).
     ext_name = os.environ.get("MFA_EXT_NAME", "_C_legacy")
+    # torch >= 2.12 headers need C++20; torch 2.5's headers specialize
+    # std::is_arithmetic, which libc++ rejects in C++20 mode.
+    cxx_std = "-std=c++17" if ext_name == "_C_legacy" else "-std=c++20"
     return [Extension(
         name=f"mps_flash_attn.{ext_name}",
         sources=["mps_flash_attn/csrc/mps_flash_attn.mm"],
         extra_compile_args=[
-            "-std=c++20", "-O3",
+            cxx_std, "-O3",
+            # Newer SDK libc++ marks std traits no_specializations; torch 2.5
+            # headers specialize std::is_arithmetic.
+            "-Wno-invalid-specialization",
             f"-DTORCH_EXTENSION_NAME={ext_name}",
         ],
         extra_link_args=[
