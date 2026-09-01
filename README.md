@@ -182,14 +182,16 @@ Python API (mps_flash_attn)
 
 |         | torch 2.5 | 2.6 | 2.7 | 2.8 | 2.9 | 2.10 | 2.11 | 2.12 | 2.13 |
 |---------|:---------:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|
-| py 3.10 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
-| py 3.11 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
-| py 3.12 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      | OK   |
-| py 3.13 |           | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
-| py 3.14 |           |     |     |     | OK  | OK   | OK   |      |      |
+| py 3.10 | OK        | OK  | OK  | OK  | OK  | OK   | OK   | OK   | OK   |
+| py 3.11 | OK        | OK  | OK  | OK  | OK  | OK   | OK   | OK   | OK   |
+| py 3.12 | OK        | OK  | OK  | OK  | OK  | OK   | OK   | OK   | OK   |
+| py 3.13 |           | OK  | OK  | OK  | OK  | OK   | OK   | OK   | OK   |
+| py 3.14 |           |     |     |     | OK  | OK   | OK   | OK   | OK   |
 
-Empty cells are combinations PyTorch itself does not ship wheels for, or
-that have not been run through `tests/wheel_matrix` yet.
+Empty cells are combinations PyTorch itself does not ship wheels for.
+Each wheel carries three builds of the C++ extension — `_C_legacy` (torch
+2.5–2.9), `_C_modern` (2.10–2.12) and `_C_next` (2.13+) — because torch's
+C++ ABI changed at 2.10 and again at 2.13; the right one is picked at import.
 
 The `dependencies` field in the wheel pins `torch>=2.5,<2.14`, so `pip install
 mps-flash-attn` will refuse to install on a torch outside this range rather
