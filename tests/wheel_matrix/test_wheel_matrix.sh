@@ -27,15 +27,17 @@ for py in 3.10 3.11 3.12 3.13 3.14; do
         $venv/bin/pip install --quiet --upgrade pip > /dev/null 2>&1
         if ! $venv/bin/pip install --quiet "torch==${tv}.*" > /dev/null 2>&1; then
             echo "py$py + torch $tv: SKIP (torch install failed)"
+            rm -rf $venv
             continue
         fi
         $venv/bin/pip install --quiet --no-deps "$wheel" > /dev/null 2>&1
-        result=$($venv/bin/python "$TEST_PY" 2>&1)
+        result=$(cd /tmp && $venv/bin/python "$TEST_PY" 2>&1)
         if echo "$result" | grep -q "^OK "; then
             echo "py$py + torch $tv: PASS"
         else
             err=$(echo "$result" | grep -v "Warning\|UserWarning\|Failed to init" | tail -2 | tr '\n' ' ')
             echo "py$py + torch $tv: FAIL $err"
         fi
+        rm -rf $venv
     done
 done
