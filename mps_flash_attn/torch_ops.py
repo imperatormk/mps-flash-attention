@@ -10,6 +10,8 @@ Usage:
 Then the ops are automatically used via torch.ops.mfa.*
 """
 
+import os
+
 import torch
 from torch.library import Library, impl
 
@@ -131,4 +133,5 @@ def backward_with_bias_meta(grad_output, query, key, value, output, logsumexp, a
     return dQ, dK, dV
 
 
-print("✓ mps_flash_attn torch.compile ops registered")
+if os.environ.get("MFA_DEBUG", "0") == "1":
+    print("mps_flash_attn torch.compile ops registered")
