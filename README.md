@@ -176,21 +176,22 @@ Python API (mps_flash_attn)
 - macOS 14+ (Sonoma, Sequoia, or Tahoe)
 - Apple Silicon (M1/M2/M3/M4/M5)
 - Python 3.10, 3.11, 3.12, 3.13, or 3.14
-- PyTorch 2.5 through 2.11
+- PyTorch 2.5 through 2.13
 
 ### Tested torch + Python combinations
 
-|         | torch 2.5 | 2.6 | 2.7 | 2.8 | 2.9 | 2.10 | 2.11 |
-|---------|:---------:|:---:|:---:|:---:|:---:|:----:|:----:|
-| py 3.10 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
-| py 3.11 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
-| py 3.12 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |
-| py 3.13 |           | OK  | OK  | OK  | OK  | OK   | OK   |
-| py 3.14 |           |     |     |     | OK  | OK   | OK   |
+|         | torch 2.5 | 2.6 | 2.7 | 2.8 | 2.9 | 2.10 | 2.11 | 2.12 | 2.13 |
+|---------|:---------:|:---:|:---:|:---:|:---:|:----:|:----:|:----:|:----:|
+| py 3.10 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
+| py 3.11 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
+| py 3.12 | OK        | OK  | OK  | OK  | OK  | OK   | OK   |      | OK   |
+| py 3.13 |           | OK  | OK  | OK  | OK  | OK   | OK   |      |      |
+| py 3.14 |           |     |     |     | OK  | OK   | OK   |      |      |
 
-Empty cells are combinations PyTorch itself does not ship wheels for.
+Empty cells are combinations PyTorch itself does not ship wheels for, or
+that have not been run through `tests/wheel_matrix` yet.
 
-The `dependencies` field in the wheel pins `torch>=2.5,<2.12`, so `pip install
+The `dependencies` field in the wheel pins `torch>=2.5,<2.14`, so `pip install
 mps-flash-attn` will refuse to install on a torch outside this range rather
 than installing and crashing at runtime. When a new torch minor is released we
 cut a release that bumps the upper bound.

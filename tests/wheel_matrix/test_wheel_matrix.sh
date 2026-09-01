@@ -4,11 +4,11 @@ set -u
 
 # Map of py-version -> torch versions to try
 declare -A TORCH_FOR_PY
-TORCH_FOR_PY[3.10]="2.5 2.6 2.7 2.8 2.9 2.10 2.11"
-TORCH_FOR_PY[3.11]="2.5 2.6 2.7 2.8 2.9 2.10 2.11"
-TORCH_FOR_PY[3.12]="2.5 2.6 2.7 2.8 2.9 2.10 2.11"
-TORCH_FOR_PY[3.13]="2.6 2.7 2.8 2.9 2.10 2.11"
-TORCH_FOR_PY[3.14]="2.9 2.10 2.11"
+TORCH_FOR_PY[3.10]="2.5 2.6 2.7 2.8 2.9 2.10 2.11 2.12 2.13"
+TORCH_FOR_PY[3.11]="2.5 2.6 2.7 2.8 2.9 2.10 2.11 2.12 2.13"
+TORCH_FOR_PY[3.12]="2.5 2.6 2.7 2.8 2.9 2.10 2.11 2.12 2.13"
+TORCH_FOR_PY[3.13]="2.6 2.7 2.8 2.9 2.10 2.11 2.12 2.13"
+TORCH_FOR_PY[3.14]="2.9 2.10 2.11 2.12 2.13"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST="${DIST:-$SCRIPT_DIR/../../dist}"

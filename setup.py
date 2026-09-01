@@ -73,7 +73,7 @@ def get_extensions():
         name=f"mps_flash_attn.{ext_name}",
         sources=["mps_flash_attn/csrc/mps_flash_attn.mm"],
         extra_compile_args=[
-            "-std=c++17", "-O3",
+            "-std=c++20", "-O3",
             f"-DTORCH_EXTENSION_NAME={ext_name}",
         ],
         extra_link_args=[
@@ -86,7 +86,7 @@ def get_extensions():
 
 setup(
     name="mps-flash-attn",
-    version="0.6.1",
+    version="0.6.2",
     packages=find_packages(),
     package_data={
         "mps_flash_attn": [
@@ -99,7 +99,7 @@ setup(
         ],
     },
     include_package_data=True,
-    install_requires=["torch>=2.5,<2.12"],
+    install_requires=["torch>=2.5,<2.14"],
     ext_modules=get_extensions(),
     cmdclass={"build_ext": ObjCppBuildExt},
 )
